@@ -4,6 +4,7 @@ import pygame
 import sys
 import threading
 import time
+import math
 
 host = '127.0.0.1'
 port = 12345
@@ -15,6 +16,7 @@ display_window_connect = True
 player_name = ""
 client_connected = False
 fast_connect_state = False
+winner_name = None
 
 print("Chargement de network_manager")
 
@@ -44,7 +46,8 @@ def listen_for_messages():
     global buffer, display_window_connect
     while True:
         try:
-            data = client_socket.recv(1024).decode()
+            data = client_socket.recv(1024).decode('utf-8')
+            buffer += data 
             if not data:
                 break
             buffer += data
@@ -355,44 +358,198 @@ def init_game_window():
 
 def game():
     print("Game activée")
-    global player_name, tps_de_pause, winner_name
+    global player_name, winner_name
     
     screen, WIDTH, HEIGHT = init_game_window()
-
-    # Charger les images de fond
+    
+    mask = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    mask.fill((0, 0, 0))
+    mask.set_alpha(252)  # Opacité ajustée
+    
+    # Chargement des images
     background_image1 = pygame.image.load(r"C:/Users/raph6/Documents/ServOMorph/IO_Genesis/graphisme_ui_ux/interfaces_et_maquettes/maps/map.png")
     background_image1 = pygame.transform.scale(background_image1, (WIDTH, HEIGHT))
 
-    # Charger l'image du Virdium
     virdium_image = pygame.image.load(r"C:/Users/raph6/Documents/ServOMorph/IO_Genesis/graphisme_ui_ux/concept_art/ressources/virdium.png")
-    virdium_image = pygame.transform.scale(virdium_image, (50, 50))  
-    
-    coords_virdium= request_virdium_coords(client_socket)
-    if coords_virdium:
-        virdium_x, virdium_y = coords_virdium
-    else:
+    virdium_image = pygame.transform.scale(virdium_image, (50, 50))
+
+    coords_virdium = request_virdium_coords(client_socket)
+    if not coords_virdium:
         print("Erreur : impossible de récupérer les coordonnées du virdium.")
-        return  # Quitte la fonction en cas d'erreur
+        return
+    virdium_x, virdium_y = coords_virdium
     print("Récupération des coords du virdium dans game()")
+
+    character_image = pygame.image.load(r"C:/Users/raph6/Documents/ServOMorph/IO_Genesis/graphisme_ui_ux/concept_art/robot_explorateur.png")
+    character_image = pygame.transform.scale(character_image, (50, 50))
+    character_pos = [WIDTH // 2, HEIGHT // 2]
+    target_pos = character_pos[:]
+    speed = 20
+
+    other_character_image = character_image.copy()
+    other_character_pos = [WIDTH // 2, HEIGHT // 2]
+
+    clock = pygame.time.Clock()
+    running = True  # Correction de la variable de boucle
+    winner_name = None  # Initialisation pour éviter une erreur
+
+    while running and winner_name is None:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                target_pos = list(event.pos)
+
+        character_pos[0], character_pos[1] = move_towards(target_pos, character_pos, speed)
+        character_pos = round_coordinates(character_pos)
+
+        coords_message = f"MOVE:{character_pos[0]},{character_pos[1]}"
+        client_socket.send((coords_message + "\n").encode('utf-8'))
+
+        message = client_socket.recv(1024).decode('utf-8')
+        if message.startswith("MOVE:"):
+            coords = message.replace("MOVE:", "").strip().split(',')
+            other_character_pos[0], other_character_pos[1] = int(coords[0]), int(coords[1])
+
+        character_rect = pygame.Rect(character_pos[0] - 25, character_pos[1] - 25, 50, 50)
+        virdium_rect = pygame.Rect(virdium_x, virdium_y, 50, 50)
+
+        screen.blit(background_image1, (0, 0))
+        screen.blit(virdium_image, (virdium_x, virdium_y))
+        screen.blit(other_character_image, (other_character_pos[0] - 25, other_character_pos[1] - 25))
+        screen.blit(mask, (0, 0))
+        screen.blit(character_image, (character_pos[0] - 25, character_pos[1] - 25))
+        pygame.draw.circle(mask, (0, 0, 0, 0), (character_pos[0], character_pos[1]), 50)
+
+        if character_rect.colliderect(virdium_rect):
+            client_socket.send(f"WINNER : {player_name}\n".encode('utf-8'))
+            running = False  # Arrêt immédiat après la victoire
+
+        client_socket.send("WINNER ?\n".encode('utf-8'))
+        message = client_socket.recv(1024).decode('utf-8').strip()
+        if message and message != "None":
+            winner_name = message
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    show_victory_screen(client_socket)
+    pygame.quit()
+    
+def show_victory_screen(client_socket):
+    global player_name, winner_name
+    screen, WIDTH, HEIGHT = init_game_window()
+
+    if winner_name == player_name:
+        victory_image = pygame.image.load(r"C:\Users\raph6\Documents\Python\Collecte Royale\Images\victory.png")
+    else:
+        victory_image = pygame.image.load(r"C:\Users\raph6\Documents\Python\Collecte Royale\Images\defeat.png")
+
+    victory_image = pygame.transform.scale(victory_image, (WIDTH, HEIGHT))
+
+    replay_image = pygame.image.load(r"C:\Users\raph6\Documents\Python\Collecte Royale\Images\replay.png")
+    replay_image = pygame.transform.scale(replay_image, (WIDTH, HEIGHT))
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        screen.blit(victory_image, (0, 0))
+        pygame.display.flip()
+        time.sleep(3)
+        running = False
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = event.pos
+
+                # Zone 1: Replay
+                if 885 <= mouse_x <= 885 + 196 and 637 <= mouse_y <= 637 + 65:
+                    print("Replay clicked")
+                    game(client_socket)  # Lancer la fonction game()
+
+                # Zone 2: Crédits
+                elif 880 <= mouse_x <= 880 + 196 and 755 <= mouse_y <= 755 + 65:
+                    print("Credits clicked")
+                    # Afficher l'image des crédits
+                    credits_image = pygame.image.load(r"C:\Users\raph6\Documents\Python\Collecte Royale\Images\credits.png")
+                    credits_image = pygame.transform.scale(credits_image, (WIDTH, HEIGHT))
+                    screen.blit(credits_image, (0, 0))
+                    pygame.display.flip()
+                    time.sleep(3)  # Pause de 3 secondes
+                    game(client_socket)  # Relancer la fonction game()
+
+                # Zone 3: Quit
+                elif 876 <= mouse_x <= 876 + 196 and 873 <= mouse_y <= 873 + 65:
+                    print("Quit clicked")
+                    running = False  # Quitter la boucle principale
+
+        # Affichage de l'image replay
+        screen.blit(replay_image, (0, 0))
+        pygame.display.flip()
+
+    pygame.quit()
+
+def move_towards(target_pos, current_pos, speed):
+    """
+    Déplace progressivement une position actuelle vers une position cible à une vitesse donnée.
+    
+    :param target_pos: Tuple (x, y) représentant la position cible
+    :param current_pos: Tuple (x, y) représentant la position actuelle
+    :param speed: Vitesse de déplacement
+    :return: Nouvelle position (x, y)
+    """
+    target_x, target_y = target_pos
+    current_x, current_y = current_pos
+
+    # Calculer la distance entre les deux points
+    distance = math.hypot(target_x - current_x, target_y - current_y)
+
+    # Si on est proche du point cible, arrêter le déplacement
+    if distance < speed:
+        return target_x, target_y
+
+    # Calculer la direction du mouvement
+    direction_x = (target_x - current_x) / distance
+    direction_y = (target_y - current_y) / distance
+
+    # Mettre à jour la position
+    new_x = current_x + direction_x * speed
+    new_y = current_y + direction_y * speed
+
+    return new_x, new_y
+
     
 def request_virdium_coords(client_socket):
-    print("Demande au serveur les coord du virdium")
+    print("Demande au serveur les coordonnées du virdium")
     try:
         # Envoi de la commande pour demander les coordonnées
         client_socket.send(("request_virdium_coords" + "\n").encode('utf-8'))
-        response_ok = False
-        while response_ok == False:
-            response = client_socket.recv(1024).decode('utf-8')
+        
+        while True:
+            response = client_socket.recv(1024).decode('utf-8').strip()
             print(f"Message reçu dans request_virdium_coords : {response}")
 
             if response.startswith("virdium_coords="):
-                response_ok = True
                 coords = response.replace("virdium_coords=", "").strip()
                 print("Fin de request_virdium_coords")
                 return tuple(map(int, coords.split(',')))
-            else:
-                print(f"Message ignoré : {response}")
+
     except Exception as e:
         print(f"Erreur lors de la demande des coordonnées du virdium : {e}")
         return None
+
+def round_coordinates(coords):
+    """
+    Arrondit une liste ou un tuple de coordonnées flottantes à des entiers.
+    
+    :param coords: Liste ou tuple contenant des coordonnées (flottantes ou entières).
+    :return: Tuple contenant les coordonnées arrondies.
+    """
+    return list(map(lambda x: round(float(x)), coords))
 
