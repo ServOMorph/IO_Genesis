@@ -10,6 +10,7 @@ import math
 import random
 import subprocess
 from setup_game import go_setup_game 
+import socket_holder
 
 host = '127.0.0.1'
 port = 12345
@@ -68,8 +69,23 @@ def listen_for_messages():
                             print(f"Valeur de fast_connect_state : {fast_connect_state}")
                             display_window_connect = False
                             if fast_connect_state == True:
-                                subprocess.run(["python", "C:/Users/raph6/Documents/ServOMorph/IO_Genesis/developpement/scripts_et_code/game.py"])
- 
+                                print(f"Valuer de client_socket = {client_socket}")
+                                socket_holder.client_socket = client_socket
+                                print(f"Valeur de client_socket dans socket_holder : {socket_holder.client_socket}")
+                                print("Tentative d'exécution de game.py...")
+                                print("Tentative d'exécution de game.py...")
+                                process = subprocess.Popen(
+                                    [sys.executable, "C:/Users/raph6/Documents/ServOMorph/IO_Genesis/developpement/scripts_et_code/game.py"],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    text=True
+                                )
+                                print("Process lancé, attente de réponse...")
+                                stdout, stderr = process.communicate()
+                                print("STDOUT:", stdout)
+                                print("STDERR:", stderr)
+                                print("game.py exécuté ou terminé.")
+
                     except ValueError:
                         pass  # Ignore si l'extraction échoue
         except Exception as e:
@@ -83,6 +99,7 @@ def connect_to_server(player_name):
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((host, port))
             print(f"Connecté au serveur avec le nom : {player_name}")
+            print(f"Valuer de client_socket = {client_socket}")
             # Envoi automatique du nom du joueur
             message = f"Nom du joueur = {player_name}\n"
             client_socket.send(message.encode())
