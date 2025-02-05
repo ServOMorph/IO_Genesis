@@ -11,6 +11,7 @@ import random
 import subprocess
 from setup_game import go_setup_game 
 import socket_holder
+import pickle
 
 host = '127.0.0.1'
 port = 12345
@@ -69,23 +70,8 @@ def listen_for_messages():
                             print(f"Valeur de fast_connect_state : {fast_connect_state}")
                             display_window_connect = False
                             if fast_connect_state == True:
-                                print(f"Valuer de client_socket = {client_socket}")
-                                socket_holder.client_socket = client_socket
-                                print(f"Valeur de client_socket dans socket_holder : {socket_holder.client_socket}")
-                                print("Tentative d'exécution de game.py...")
-                                print("Tentative d'exécution de game.py...")
-                                process = subprocess.Popen(
-                                    [sys.executable, "C:/Users/raph6/Documents/ServOMorph/IO_Genesis/developpement/scripts_et_code/game.py"],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    text=True
-                                )
-                                print("Process lancé, attente de réponse...")
-                                stdout, stderr = process.communicate()
-                                print("STDOUT:", stdout)
-                                print("STDERR:", stderr)
-                                print("game.py exécuté ou terminé.")
-
+                                print("Lancement de la def game")
+                                game()
                     except ValueError:
                         pass  # Ignore si l'extraction échoue
         except Exception as e:
@@ -316,7 +302,7 @@ def launch_game():
     pygame.display.flip()
     time.sleep(13)
     pygame.display.quit()    
-    go_setup_game()
+    setup_game()
 
 def send_message_to_server(message):
     """Envoie un message au serveur via le socket client."""
@@ -329,3 +315,45 @@ def send_message_to_server(message):
             print(f"Erreur lors de l'envoi du message : {e}")
     else:
         print("Erreur : Aucun socket client connecté.")
+
+def setup_game():
+    print("lancement de setup_game")
+    pygame.init()
+    WIDTH, HEIGHT = 1920, 1080
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("IO Genesis")
+
+    # Charger les images de fond
+    background_image = pygame.image.load(r"C:/Users/raph6/Documents/ServOMorph/IO_Genesis/graphisme_ui_ux/interfaces_et_maquettes/setup_game/setup_game.png")
+    background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
+    screen.blit(background_image, (0, 0))  # Affiche l'image de fond
+
+    # Barre de progression
+    BAR_WIDTH, BAR_HEIGHT = 600, 10
+    bar_x = (WIDTH - BAR_WIDTH) // 2
+    bar_y = HEIGHT - BAR_HEIGHT - 50
+    bar_color = (205,217,201)
+    border_color = (83,95,108)
+    border_thickness = 5
+    total_duration = 7
+    fps = 60
+    clock = pygame.time.Clock()
+
+    # Progression
+    start_time = time.time()
+    while time.time() - start_time < total_duration:
+        screen.blit(background_image, (0, 0))
+        progress = (time.time() - start_time) / total_duration
+        progress_width = int(BAR_WIDTH * progress)
+        pygame.draw.rect(screen, border_color, (bar_x, bar_y, BAR_WIDTH, BAR_HEIGHT), border_thickness)
+        pygame.draw.rect(screen, bar_color, (bar_x, bar_y, progress_width, BAR_HEIGHT))
+        pygame.display.flip()
+        clock.tick(fps)
+        
+    pygame.display.quit()  
+
+    game()
+
+def game():
+    print("Game activée")
+    
