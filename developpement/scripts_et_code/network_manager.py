@@ -4,14 +4,6 @@ import pygame
 import sys
 import threading
 import time
-import tkinter as tk
-from tkinter import messagebox
-import math
-import random
-import subprocess
-from setup_game import go_setup_game 
-import socket_holder
-import pickle
 
 host = '127.0.0.1'
 port = 12345
@@ -354,6 +346,53 @@ def setup_game():
 
     game()
 
+def init_game_window():
+    pygame.init()
+    WIDTH, HEIGHT = 1920, 1080
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("IO Genesis")
+    return screen, WIDTH, HEIGHT
+
 def game():
     print("Game activée")
+    global player_name, tps_de_pause, winner_name
     
+    screen, WIDTH, HEIGHT = init_game_window()
+
+    # Charger les images de fond
+    background_image1 = pygame.image.load(r"C:/Users/raph6/Documents/ServOMorph/IO_Genesis/graphisme_ui_ux/interfaces_et_maquettes/maps/map.png")
+    background_image1 = pygame.transform.scale(background_image1, (WIDTH, HEIGHT))
+
+    # Charger l'image du Virdium
+    virdium_image = pygame.image.load(r"C:/Users/raph6/Documents/ServOMorph/IO_Genesis/graphisme_ui_ux/concept_art/ressources/virdium.png")
+    virdium_image = pygame.transform.scale(virdium_image, (50, 50))  
+    
+    coords_virdium= request_virdium_coords(client_socket)
+    if coords_virdium:
+        virdium_x, virdium_y = virdium_chest
+    else:
+        print("Erreur : impossible de récupérer les coordonnées du virdium.")
+        return  # Quitte la fonction en cas d'erreur
+    print("Récupération des coords du virdium dans game()")
+    
+def request_virdium_coords(client_socket):
+    print("Demande au serveur les coord du virdium")
+    try:
+        # Envoi de la commande pour demander les coordonnées
+        client_socket.send(("request_virdium_coords" + "\n").encode('utf-8'))
+        response_ok = False
+        while response_ok == False:
+            response = client_socket.recv(1024).decode('utf-8')
+            print(f"Message reçu dans request_virdium_coords : {response}")
+
+            if response.startswith("virdium_coords:"):
+                response_ok = True
+                coords = response.replace("irdium_coords:", "").strip()
+                print("Fin de request_virdium_coords")
+                return tuple(map(int, coords.split(',')))
+            else:
+                print(f"Message ignoré : {response}")
+    except Exception as e:
+        print(f"Erreur lors de la demande des coordonnées du virdium : {e}")
+        return None
+

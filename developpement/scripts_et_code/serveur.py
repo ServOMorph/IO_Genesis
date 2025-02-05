@@ -1,5 +1,6 @@
 import socket
 import threading
+import random
 
 host = '127.0.0.1'
 port = 12345
@@ -15,6 +16,12 @@ nb_joueurs = 0
 liste_joueurs = []
 clients = []
 lock = threading.Lock()
+
+#Variable pour le Virdium
+virdium_width = 50  # Largeur du coffre
+virdium_height = 50  # Hauteur du coffre
+virdium_x = random.randint(0, 1920 - virdium_width)
+virdium_y = random.randint(0, 1080 - virdium_height)    
 
 def gerer_client(conn, addr):
     global nb_joueurs, liste_joueurs
@@ -41,19 +48,20 @@ def gerer_client(conn, addr):
                             compteur += 1
                         liste_joueurs.append(nom_joueur)
                         nb_joueurs += 1
-                    
                     print(f"Joueur connecté : {nom_joueur}")
                     print(f"Nombre de joueurs connectés : {nb_joueurs}")
                     # Envoyer la confirmation au client
                     conn.send(f"Bienvenue {nom_joueur}, joueurs en ligne: {nb_joueurs}\n".encode())
                     envoyer_a_tous(f"{nom_joueur} a rejoint la partie. Joueurs en ligne: {nb_joueurs}")
+                    
+                elif message.lower() == "request_virdium_coords":
+                    # Envoyer les coordonnées du Virdium au joueur qui a fait la requête
+                    conn.send(f"virdium_coords={virdium_x},{virdium_y}\n".encode())
+                    
 
     except Exception as e:
         print(f"Erreur avec {addr}: {e}")
     # Déconnexion du client
-    print(f"Déconnexion de {addr}")
-
-    # Le bloc `finally` est maintenant bien structuré
     print(f"Déconnexion de {addr}")
     with lock:
         if nom_joueur and nom_joueur in liste_joueurs:
