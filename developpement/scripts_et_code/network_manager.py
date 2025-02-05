@@ -375,6 +375,40 @@ def game():
         return  # Quitte la fonction en cas d'erreur
     print("Récupération des coords du virdium dans game()")
     
+    #Charger l'image du robot du client
+    character_image = pygame.image.load(r"C:\Users\raph6\Documents\ServOMorph\IO_Genesis\graphisme_ui_ux\concept_art\robot_explorateur.png")
+    character_image = pygame.transform.scale(character_image, (50, 50))  # Ajuster la taille du personnage
+    character_pos = [WIDTH // 2, HEIGHT // 2]  # Position actuelle
+    target_pos = character_pos[:]  # Initialiser la cible à la position actuelle
+    speed = 20  # Vitesse de déplacement
+    
+    # Charger l'image du deuxième explorateur
+    other_character_image = pygame.image.load(r"C:\Users\raph6\Documents\ServOMorph\IO_Genesis\graphisme_ui_ux\concept_art\robot_explorateur.png")
+    other_character_image = pygame.transform.scale(other_character_image, (50, 50))  # Ajuster la taille du deuxième personnage
+    other_character_pos = [100+WIDTH // 2, HEIGHT // 2]  # Position centrale (fixée)
+
+    clock = pygame.time.Clock()
+    
+    while True :
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:  # Détecter un clic
+                target_pos = list(event.pos)  # Mettre à jour la cible avec les coordonnées du clic
+
+        
+        
+        # Mettre à jour l'affichage
+        screen.blit(background_image1, (0, 0))
+        screen.blit(virdium_image, (virdium_x, virdium_y))
+        screen.blit(character_image, (character_pos[0] - character_image.get_width() // 2,
+                                       character_pos[1] - character_image.get_height() // 2))
+        screen.blit(other_character_image, (other_character_pos[0] - other_character_image.get_width() // 2,
+                                    other_character_pos[1] - other_character_image.get_height() // 2))  # Deuxième personnage
+        
+        pygame.display.flip()
+        
+    
 def request_virdium_coords(client_socket):
     print("Demande au serveur les coord du virdium")
     try:
