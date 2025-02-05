@@ -42,7 +42,7 @@ def dev_mode_window():
     func_entry.insert(0, "Nom de la fonction")
     
     tk.Button(root, text="Lancer la fonction", command=execute_function).pack(pady=5)
-    tk.Button(root, text="Quitter", command=root.quit).pack(pady=5)
+    tk.Button(root, text="Quitter", command=root.destroy).pack(pady=5)
     
     root.mainloop()
 

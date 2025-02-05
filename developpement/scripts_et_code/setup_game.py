@@ -1,6 +1,7 @@
 import pygame
 import time
 import os
+import subprocess
 
 def go_setup_game():
     print("lancement de setup_game")
@@ -38,3 +39,4 @@ def go_setup_game():
         clock.tick(fps)
         
     pygame.display.quit()  
+    subprocess.run(["python", "C:/Users/raph6/Documents/ServOMorph/IO_Genesis/developpement/scripts_et_code/game.py"])

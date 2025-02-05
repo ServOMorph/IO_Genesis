@@ -68,7 +68,8 @@ def listen_for_messages():
                             print(f"Valeur de fast_connect_state : {fast_connect_state}")
                             display_window_connect = False
                             if fast_connect_state == True:
-                                go_setup_game()
+                                subprocess.run(["python", "C:/Users/raph6/Documents/ServOMorph/IO_Genesis/developpement/scripts_et_code/game.py"])
+ 
                     except ValueError:
                         pass  # Ignore si l'extraction échoue
         except Exception as e:
@@ -104,6 +105,8 @@ def fast_connect():
 def connect_normal():
     print("Lancement de connect_normal dans network_manager")
     global client_socket, server_online, player_name, client_connected, fast_connect_state, display_window_connect
+    
+    msg_bienvenue_active = False
         
     # Lancer l’attente serveur en arrière-plan
     thread_serveur = threading.Thread(target=attendre_serveur_en_thread, daemon=True)
@@ -197,8 +200,7 @@ def connect_normal():
         text_width = name_surface.get_width()
         text_x = input_box.x + (input_box.width - text_width) // 2  # Calcul pour centrer
         screen.blit(name_surface, (text_x, input_box.y + 5))
-
-        # Affiche un message de bienvenue
+        
         if 'error_message' in locals() and error_message:
             error_text = font.render(error_message, True, WHITE)
             screen.blit(error_text, (100, 730))
@@ -225,9 +227,7 @@ def connect_normal():
                             error_message = "Entrer le nom du joueur"
                         else:
                             print("affichage msg de bienvenue")
-                            welcome_text = font.render(f"Bienvenue {player_name}", True, WHITE)
-                            screen.blit(welcome_text, (100,730)) #718
-                            pygame.display.flip()
+                            msg_bienvenue_active = True
                             thread_connexion = threading.Thread(target=connect_to_server, args=(player_name,), daemon=True)
                             thread_connexion.start()
 
@@ -245,11 +245,17 @@ def connect_normal():
                     player_name = player_name[:-1]  # Supprimer le dernier caractère
                 else:
                     player_name += event.unicode  # Ajouter le caractère tapé
+        
+        if msg_bienvenue_active:
+            welcome_text = font.render(f"Bienvenue {player_name}", True, WHITE)
+            screen.blit(welcome_text, (100,730)) #718
+            
         pygame.display.flip()
         
         if display_window_connect == False:
             print("Fermeture de la fenêtre de connexion...")
             pygame.display.quit()
+            pygame.mixer.music.stop()
             launch_game()
 
 def launch_game():
@@ -294,3 +300,15 @@ def launch_game():
     time.sleep(13)
     pygame.display.quit()    
     go_setup_game()
+
+def send_message_to_server(message):
+    """Envoie un message au serveur via le socket client."""
+    global client_socket
+    if client_socket:
+        try:
+            client_socket.sendall((message + "\n").encode())
+            print(f"Message envoyé au serveur : {message}")
+        except Exception as e:
+            print(f"Erreur lors de l'envoi du message : {e}")
+    else:
+        print("Erreur : Aucun socket client connecté.")
