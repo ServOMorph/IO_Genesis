@@ -4,6 +4,7 @@ import pygame
 import sys
 import threading
 import time
+from game_utils import move_towards, round_coordinates
 
 host = '127.0.0.1'
 port = 12345
@@ -358,6 +359,10 @@ def game():
     global player_name, tps_de_pause, winner_name
     
     screen, WIDTH, HEIGHT = init_game_window()
+    
+    mask = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    mask.fill((0, 0, 0))  # Couleur noire
+    mask.set_alpha(100)  # Opacité standard 252
 
     # Charger les images de fond
     background_image1 = pygame.image.load(r"C:/Users/raph6/Documents/ServOMorph/IO_Genesis/graphisme_ui_ux/interfaces_et_maquettes/maps/map.png")
@@ -385,7 +390,7 @@ def game():
     # Charger l'image du deuxième explorateur
     other_character_image = pygame.image.load(r"C:\Users\raph6\Documents\ServOMorph\IO_Genesis\graphisme_ui_ux\concept_art\robot_explorateur.png")
     other_character_image = pygame.transform.scale(other_character_image, (50, 50))  # Ajuster la taille du deuxième personnage
-    other_character_pos = [100+WIDTH // 2, HEIGHT // 2]  # Position centrale (fixée)
+    other_character_pos = [WIDTH // 2, HEIGHT // 2]  # Position centrale (fixée)
 
     clock = pygame.time.Clock()
     
@@ -395,8 +400,17 @@ def game():
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:  # Détecter un clic
                 target_pos = list(event.pos)  # Mettre à jour la cible avec les coordonnées du clic
-
-        
+                
+        # Déplacer le personnage vers la cible
+        character_pos[0], character_pos[1] = move_towards(target_pos, character_pos, speed)
+        character_pos = round_coordinates(character_pos)
+        coords_message = (f"MOVE: {character_pos[0]},{character_pos[1]}" + "\n")
+        client_socket.send((coords_message).encode('utf-8'))
+        print(f"Envoie msg au serveur : {coords_message} ")
+        message = client_socket.recv(1024).decode('utf-8')
+        if message.startswith("MOVE:"):
+            coords = message.replace("MOVE:", "").strip().split(',')
+            other_character_pos[0], other_character_pos[1] = int(coords[0]), int(coords[1])
         
         # Mettre à jour l'affichage
         screen.blit(background_image1, (0, 0))
@@ -405,6 +419,8 @@ def game():
                                        character_pos[1] - character_image.get_height() // 2))
         screen.blit(other_character_image, (other_character_pos[0] - other_character_image.get_width() // 2,
                                     other_character_pos[1] - other_character_image.get_height() // 2))  # Deuxième personnage
+        screen.blit(mask, (0, 0))
+        pygame.draw.circle(mask, (0, 0, 0, 0), (character_pos[0], character_pos[1]), 50)
         
         pygame.display.flip()
         

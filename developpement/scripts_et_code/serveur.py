@@ -32,6 +32,7 @@ def gerer_client(conn, addr):
     try:
         while True:
             data = conn.recv(1024).decode()
+            print(f"Données reçues (brutes) : {data}")  # Débogage réception
             if not data:
                 break
             buffer += data
@@ -58,6 +59,10 @@ def gerer_client(conn, addr):
                     # Envoyer les coordonnées du Virdium au joueur qui a fait la requête
                     conn.send(f"virdium_coords={virdium_x},{virdium_y}\n".encode())
                     
+                elif message.startswith("MOVE: "):
+                    envoyer_a_tous_sauf_expéditeur(message, conn)
+                    print(f"Envoie du message à tous sauf client :{message}")
+                                    
 
     except Exception as e:
         print(f"Erreur avec {addr}: {e}")
@@ -85,6 +90,22 @@ def envoyer_a_tous(message):
         for client in deconnectes:
             clients.remove(client)
             client.close()
+            
+def envoyer_a_tous_sauf_expéditeur(message, expéditeur):
+    """
+    Envoie un message à tous les clients sauf à l'expéditeur.
+
+    :param message: Message à envoyer
+    :param expéditeur: La socket du client qui a envoyé le message
+    :param clients: Liste des sockets des clients connectés
+    """
+    for client in clients:
+        if client != expéditeur:
+            try:
+                client.send(message.encode('utf-8'))
+            except Exception as e:
+                print(f"Erreur lors de l'envoi au client {client}: {e}")
+
 
 while True:
     conn, addr = server_socket.accept()
