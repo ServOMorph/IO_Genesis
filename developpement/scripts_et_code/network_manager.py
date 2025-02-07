@@ -456,7 +456,6 @@ def game():
         
     show_victory_screen()
     pygame.quit()
-
         
     
 def request_virdium_coords(client_socket):
@@ -481,5 +480,28 @@ def request_virdium_coords(client_socket):
         return None
     
 def show_victory_screen():
+    global player_name, winner_name
     print("lancement de show_victory_screen")
+    screen, WIDTH, HEIGHT = init_game_window()
+
+    if winner_name == player_name:
+        victory_image = pygame.image.load(r"C:\Users\raph6\Documents\ServOMorph\IO_Genesis\graphisme_ui_ux\interfaces_et_maquettes\win_images\gagnant.png")
+    else:
+        victory_image = pygame.image.load(r"C:\Users\raph6\Documents\ServOMorph\IO_Genesis\graphisme_ui_ux\interfaces_et_maquettes\win_images\perdant.png")
+
+    victory_image = pygame.transform.scale(victory_image, (WIDTH, HEIGHT))
+    
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        screen.blit(victory_image, (0, 0))
+        pygame.display.flip()
+        time.sleep(5)
+        running = False
+
+
+
+    
 
