@@ -16,6 +16,7 @@ nb_joueurs = 0
 liste_joueurs = []
 clients = []
 lock = threading.Lock()
+winner_name = None
 
 #Variable pour le Virdium
 virdium_width = 50  # Largeur du coffre
@@ -24,7 +25,7 @@ virdium_x = random.randint(0, 1920 - virdium_width)
 virdium_y = random.randint(0, 1080 - virdium_height)    
 
 def gerer_client(conn, addr):
-    global nb_joueurs, liste_joueurs
+    global nb_joueurs, liste_joueurs, winner_name
     print(f"Nouvelle connexion : {addr}")
     buffer = ""
     nom_joueur = None
@@ -62,7 +63,18 @@ def gerer_client(conn, addr):
                 elif message.startswith("MOVE: "):
                     envoyer_a_tous_sauf_expéditeur(message, conn)
                     print(f"Envoie du message à tous sauf client :{message}")
-                                    
+                
+                elif message.startswith("WINNER: "):
+                    global winner_name
+                    winner_name = message.replace("WINNER: ", "").strip()
+                    print(f"Le gagnant est : {winner_name}")
+                    
+                elif message == "WINNER ?":
+                    if winner_name is None:
+                        conn.send("NO WINNER\n".encode('utf-8'))
+                        print("Pas de gagnant encore")
+                    else: 
+                        envoyer_a_tous(f"WINNER IS: {winner_name}\n")
 
     except Exception as e:
         print(f"Erreur avec {addr}: {e}")
@@ -72,39 +84,28 @@ def gerer_client(conn, addr):
         if nom_joueur and nom_joueur in liste_joueurs:
             liste_joueurs.remove(nom_joueur)
             nb_joueurs -= 1
-            envoyer_a_tous(f"{nom_joueur} a quitté la partie. Joueurs restants: {nb_joueurs}")
+            envoyer_a_tous((f"{nom_joueur} a quitté la partie. Joueurs restants: {nb_joueurs}"+"\n").encode('utf-8'))
         if conn in clients:
             clients.remove(conn)
         conn.close()
 
 def envoyer_a_tous(message):
-    with lock:
-        deconnectes = []
-        for client in clients:
-            try:
-                client.send(f"{message}\n".encode())
-            except:
-                deconnectes.append(client)  # Ajouter à une liste pour suppression
-
-        # Retirer proprement les clients déconnectés
-        for client in deconnectes:
-            clients.remove(client)
-            client.close()
+    for client in clients:
+        client.send((f"{message}\n").encode('utf-8'))
             
 def envoyer_a_tous_sauf_expéditeur(message, expéditeur):
-    """
-    Envoie un message à tous les clients sauf à l'expéditeur.
+    if not isinstance(message, str):  # Vérifier que message est une chaîne
+        message = str(message)
 
-    :param message: Message à envoyer
-    :param expéditeur: La socket du client qui a envoyé le message
-    :param clients: Liste des sockets des clients connectés
-    """
+    message_enc = (message + "\n").encode('utf-8')  # Correction de l'encodage
+    
     for client in clients:
         if client != expéditeur:
             try:
-                client.send(message.encode('utf-8'))
+                client.send(message_enc)
             except Exception as e:
                 print(f"Erreur lors de l'envoi au client {client}: {e}")
+                
 
 
 while True:

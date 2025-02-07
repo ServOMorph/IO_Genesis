@@ -16,6 +16,7 @@ display_window_connect = True
 player_name = ""
 client_connected = False
 fast_connect_state = False
+winner_name = None
 
 print("Chargement de network_manager")
 
@@ -93,7 +94,7 @@ def connect_to_server(player_name):
         pass
 
 def fast_connect():
-    global client_socket, fast_connect_state
+    global client_socket, fast_connect_state, player_name
     player_name = f"Joueur_{uuid.uuid4().hex[:6]}"
     fast_connect_state = True
     connect_to_server(player_name)
@@ -394,7 +395,7 @@ def game():
 
     clock = pygame.time.Clock()
     
-    while True :
+    while winner_name == None :
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -405,12 +406,20 @@ def game():
         character_pos[0], character_pos[1] = move_towards(target_pos, character_pos, speed)
         character_pos = round_coordinates(character_pos)
         coords_message = (f"MOVE: {character_pos[0]},{character_pos[1]}" + "\n")
-        client_socket.send((coords_message).encode('utf-8'))
+        client_socket.send((coords_message + "\n").encode('utf-8'))
         print(f"Envoie msg au serveur : {coords_message} ")
         message = client_socket.recv(1024).decode('utf-8')
         if message.startswith("MOVE:"):
             coords = message.replace("MOVE:", "").strip().split(',')
             other_character_pos[0], other_character_pos[1] = int(coords[0]), int(coords[1])
+            
+        # Vérifier la collision entre l'explorateur et le coffre
+        character_rect = pygame.Rect(character_pos[0] - character_image.get_width() // 2,
+                                     character_pos[1] - character_image.get_height() // 2,
+                                     character_image.get_width(),
+                                     character_image.get_height())
+        virdium_rect = pygame.Rect(virdium_x, virdium_y, virdium_image.get_width(), virdium_image.get_height())
+
         
         # Mettre à jour l'affichage
         screen.blit(background_image1, (0, 0))
@@ -422,14 +431,39 @@ def game():
         screen.blit(mask, (0, 0))
         pygame.draw.circle(mask, (0, 0, 0, 0), (character_pos[0], character_pos[1]), 50)
         
+        if character_rect.colliderect(virdium_rect):
+            print(f"Le joueur qui a gagné est {player_name} ")
+            winner_name = player_name
+            client_socket.send((f"WINNER: {player_name}\n").encode('utf-8'))
+            print(f"Envoie du nom du joueur gagnant : {player_name}")
+        
+        client_socket.send(("WINNER ?\n").encode('utf-8'))
+        response = client_socket.recv(1024).decode('utf-8').strip()
+        
+        if response.startswith("WINNER IS: "):
+            winner_name = response.replace("WINNER IS: ", "").strip()
+            print(f"🎉 Un gagnant a été désigné : {winner_name} !")
+        elif response == "NO WINNER":
+            winner_name = None  
+            print("Aucun gagnant pour l'instant.")
+        else:
+            print(f"⚠️ Réponse inattendue du serveur : {response}")
+        
+        print(f"winner_name : {winner_name} ")
+        
         pygame.display.flip()
+        clock.tick(60)
+        
+    show_victory_screen()
+    pygame.quit()
+
         
     
 def request_virdium_coords(client_socket):
     print("Demande au serveur les coord du virdium")
     try:
         # Envoi de la commande pour demander les coordonnées
-        client_socket.send(("request_virdium_coords" + "\n").encode('utf-8'))
+        client_socket.send((f"request_virdium_coords\n").encode('utf-8'))
         response_ok = False
         while response_ok == False:
             response = client_socket.recv(1024).decode('utf-8')
@@ -445,4 +479,7 @@ def request_virdium_coords(client_socket):
     except Exception as e:
         print(f"Erreur lors de la demande des coordonnées du virdium : {e}")
         return None
+    
+def show_victory_screen():
+    print("lancement de show_victory_screen")
 
